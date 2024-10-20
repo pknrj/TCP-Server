@@ -7,8 +7,41 @@ import (
 	"time"
 )
 
+type TCPServer struct {
+	add 	string 
+	lis 	net.Listener
+}
 
-func handleConnections(conn net.Conn){
+func NewTcpServer(add string) *TCPServer{
+	return &TCPServer{
+		add : add,
+	}
+}
+
+func (s *TCPServer) Start() error {
+	lis , err := net.Listen("tcp" , s.add) 
+	log.Println("server started at port " , s.add)
+	if err != nil {
+		return err
+	}
+	defer lis.Close()
+	s.lis = lis
+	s.acceptConnection()
+	return nil
+}
+
+func (s *TCPServer) acceptConnection(){
+	for {
+		c , err := s.lis.Accept()
+		if err != nil {
+			log.Fatal(err)
+		}
+		go s.handleConnections(c)
+	}
+}
+
+func (s *TCPServer) handleConnections(conn net.Conn){
+	log.Println("request from remote server : " , conn.RemoteAddr().String())
 	buf := make([]byte , 1024)
 	conn.Read(buf)
 	time.Sleep(time.Second * 2)
@@ -25,20 +58,10 @@ func main(){
 	}
 
 	port := ":" + args[1]
-	listener , err := net.Listen("tcp" , port)
-	if err != nil {
+
+	server := NewTcpServer(port)
+	if err := server.Start() ; err != nil {
 		log.Fatal(err)
-	}
-
-	defer listener.Close()
-
-	for {
-		c , err := listener.Accept()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		go handleConnections(c)
 	}
 
 }
